@@ -24,12 +24,23 @@
 #include <fifo.h>
 #include <tools.h>
 #include <shell.h>
+#include <twim.h>
+
+#include <ds3231.h>
+#include <at24c.h>
+#include <st7735.h>
+
+#define regbit_set_up(reg, bit)    (reg) |= (1 << (bit))
+#define regbit_set_down(reg, bit)  (reg) &= ~(1 << (bit))
+#define regbit_is_set(reg, bit)    ((reg) & (1 << (bit)))
+#define reg_set_value(reg, value)     ((reg) = (value))
+
 
 static uint8_t inbuf[FIFO_BUFFER_SIZE];
 static uint8_t outbuf[FIFO_BUFFER_SIZE];
 
-FIFO fifo_in, fifo_out;
-FIFO *in, *out;
+fifo_t fifo_in, fifo_out;
+fifo_t *in, *out;
 
 int uart_putchar(char c, FILE * stream) {
     return fifo_putc(&fifo_out, c);
@@ -61,19 +72,29 @@ void uart_init(void) {
 
     /* UCSR  - USART Control and Status Register */
     /* U2X - Double Speed Operation */
-    UCSR0A &= ~(1 << U2X0);
+    regbit_set_down(UCSR0A, U2X0);
 
     /* UCSZ - USART Character Size, 8 bit */
-    UCSR0B &= ~(1 << UCSZ02);
-    UCSR0C |= (1 << UCSZ01) | (1 << UCSZ00);
+    regbit_set_down(UCSR0B, UCSZ02);
+    regbit_set_up(UCSR0C, UCSZ01);
+    regbit_set_up(UCSR0C, UCSZ00);
 
     /* USBS - USART Stop Bit Select */
     /* UPM - USART Parity Mode */
-    UCSR0C &= ~(1 << USBS0) & ~(1 << UPM00) & ~(1 << UPM01);    /* One stop bit, no parity */
+    /* One stop bit, no parity */
+    regbit_set_down(UCSR0C, USBS0);
+    regbit_set_down(UCSR0C, UPM00);
+    regbit_set_down(UCSR0C, UPM01);
 
-    UCSR0B |= (1 << TXEN0) | (1 << RXEN0);      /* Enable TX and RX */
-    UCSR0B |= (1 << RXCIE0);    /* Enable Receive Interrupt */
-    UCSR0B &= ~(1 << UDRIE0);   /* Disable Transmit Interrupt */
+    /* Enable TX and RX */
+    regbit_set_up(UCSR0B, TXEN0);
+    regbit_set_up(UCSR0B, RXEN0);
+
+    /* Enable Receive Interrupt */
+    regbit_set_up(UCSR0B, RXCIE0);
+
+    /* Disable Transmit Interrupt */
+    regbit_set_down(UCSR0B, UDRIE0);
 }
 
 ISR(USART_RX_vect) {
@@ -98,7 +119,7 @@ ISR(WDT_vect) {
     wdt_reset();
     volatile uint8_t c;
     while ((c = fifo_getc(out)) > 0) {
-        while (!(UCSR0A & (1 << UDRE0)));
+        while(!regbit_is_set(UCSR0A, UDRE0));
         UDR0 = c;
     }
     WDTCSR = (1 << WDIE);
@@ -108,42 +129,110 @@ ISR(WDT_vect) {
 act_t shell_act[] = {
 };
 
-#define MAX_CMD_LEN 164
+/* Timer0 */
+void timer0_init(void) {
+    //TCCR0B |= (1 << CS02) | (1 << CS00); /* CLK/1024 */
+    TCCR0B |= (1 << CS02);                 /* CLK/256 */
+    TIMSK0 |= (1 << TOIE0);
+}
 
-#include <lcd128.h>
+#define BUTTON_RELEASED  0
+#define BUTTON_PRESSED   1
+
+volatile uint8_t button_writed_state = BUTTON_RELEASED;
+volatile uint16_t button_time = 0;
+
+/* Timer 0 */
+ISR(TIMER0_OVF_vect) {
+
+#define button_just_released (!(PIND & (1 << PD4)))
+#define button_just_pressed  (PIND & (1 << PD4))
+
+    if (button_just_pressed) {
+        if (button_writed_state == BUTTON_RELEASED) {
+            button_writed_state = BUTTON_PRESSED;
+            button_time++;
+            printf("button pressed\r\n");
+        } else if (button_writed_state == BUTTON_PRESSED) {
+            button_time++;
+        }
+    }
+
+    if (button_just_released) {
+        if (button_writed_state == BUTTON_RELEASED) {
+            /* nothing */
+        } else if (button_writed_state == BUTTON_PRESSED) {
+            button_writed_state = BUTTON_RELEASED;
+            printf("button pressed time=%6d\r\n", button_time);
+            button_time = 0;
+        }
+    }
+}
+
+
+#define MAX_CMD_LEN 164
 
 int main() {
     io_hook();
     uart_init();
     spi_init();
     lcd_init();
-
+    i2c_init();
     wdt_init();
+    //timer0_init();
+
+    /* Set PIN as input */
+    //regbit_set_down(DDRD, PD4);
+
     sei();
 
-
     _delay_ms(100);
-    _delay_ms(100);
-
 
     uint8_t str[MAX_CMD_LEN];
     uint8_t prompt[] = "READY>";
-
-    _delay_ms(100);
-
     fifo_puts(out, prompt);
 
-    lcd_write_rect(0, 0, 127, 127, 0xA999);
+    lcd_write_rect(0, 0, 127, 127, 0x0000);
+    lcd_draw_line(0, 0, 64, 64, 0x5555);
+
+    lcd_draw_vline(0, 0, 60, 0x5555);
+    lcd_draw_hline(0, 0, 40, 0xFFFF);
+    //lcd_draw_rest(40, 40, 40, 40, lcd_rgb2color(0x00, 0xFF, 0x00));
+
+    for (uint8_t n = 0; n < 128; n += 2) {
+        lcd_draw_rest(0, 0, n, n, lcd_rgb2color(0x05, 0xFF, 0x00));
+    }
+
+    for (uint8_t n = 0; n < 128; n += 3) {
+        lcd_draw_rest(1, 1, 0, n, lcd_rgb2color(0x05, 0x11, 0x55));
+    }
+
+    for (uint8_t n = 1; n < 64; n += 2) {
+        lcd_draw_rest(n, n, 0, n, lcd_rgb2color(0x05, 0x11, 0x55));
+    }
+
 
     while (1) {
+    for (uint8_t n = 0; n < 128; n += 2) {
+        lcd_draw_rest(0, 0, n, n, lcd_rgb2color(0x05, 0xFF, 0x00));
+    }
+
+    for (uint8_t n = 0; n < 128; n += 3) {
+        lcd_draw_rest(1, 1, 0, n, lcd_rgb2color(0x05, 0x11, 0x55));
+    }
+
+    for (uint8_t n = 1; n < 64; n += 2) {
+        lcd_draw_rest(n, n, 0, n, lcd_rgb2color(0x05, 0x11, 0x55));
+    }
+
+
         while (fifo_get_token(in, str, MAX_CMD_LEN, '\r') > 0) {
             int8_t ret_code = shell(str, shell_act, sizeof(shell_act) / sizeof(shell_act[0]));
             if (ret_code == SH_CMD_NOTFND)
                 fifo_puts(out, (uint8_t *) "COMMAND NOT FOUND\r\n");
             fifo_puts(out, prompt);
         }
-        _delay_ms(100);
+        _delay_ms(1);
     }
-
 }
 /* EOF */

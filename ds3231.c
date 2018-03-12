@@ -56,27 +56,27 @@ uint8_t ds_dec2bcd(uint8_t val) {
     return (((val / 10) << 4) | ((val % 10) & 0x0F));
 }
 
-#define dc_clear_hi_bit(r) ((r) &= ~(1 << 7))
+#define ds_clear_hi_bit(r) ((r) &= ~(1 << 7))
 
 /* Get time functions */
 
 /* Get sec */
 uint8_t ds_get_sec(void) {
     uint8_t r = ds_read(DS_REGSEC);
-    dc_clear_hi_bit(r);
+    ds_clear_hi_bit(r);
     return ds_bcd2dec(r);
 }
 /* Get min */
 uint8_t ds_get_min(void) {
     uint8_t r = ds_read(DS_REGMIN);
-    dc_clear_hi_bit(r);
+    ds_clear_hi_bit(r);
     return ds_bcd2dec(r);
 
 }
 /* Get hour */
 uint8_t ds_get_hour(void) {
     uint8_t r = ds_read(DS_REGHOUR);
-    dc_clear_hi_bit(r);
+    ds_clear_hi_bit(r);
     /* Only 24h mode */
     r &= ~(1 << 6);
     return ds_bcd2dec(r);
@@ -101,7 +101,7 @@ uint8_t ds_get_mday(void) {
 uint8_t ds_get_month(void) {
     uint8_t r = ds_read(DS_REGMONTH);
     /* Clear century bit */
-    dc_clear_hi_bit(r);
+    ds_clear_hi_bit(r);
     return ds_bcd2dec(r);
 
 }

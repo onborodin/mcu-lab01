@@ -8,7 +8,7 @@
 #include <fifo.h>
 #include <tools.h>
 
-void fifo_init(FIFO *fifo, uint8_t * buffer, uint8_t buffer_len) {
+void fifo_init(fifo_t *fifo, uint8_t * buffer, uint8_t buffer_len) {
     if (fifo && buffer) {
         memset((void **)buffer, 0, buffer_len);
         fifo->buffer_len = buffer_len;
@@ -18,28 +18,28 @@ void fifo_init(FIFO *fifo, uint8_t * buffer, uint8_t buffer_len) {
     }
 }
 
-uint8_t fifo_count(const FIFO *fifo) {
+uint8_t fifo_count(const fifo_t *fifo) {
     if (fifo) {
         return (fifo->head - fifo->tail);
     }
     return 0;
 }
 
-bool fifo_full(const FIFO *fifo) {
+bool fifo_full(const fifo_t *fifo) {
     if (fifo) {
         return (fifo_count(fifo) == fifo->buffer_len);
     }
     return true;
 }
 
-bool fifo_empty(const FIFO *fifo) {
+bool fifo_empty(const fifo_t *fifo) {
     if (fifo) {
         return (fifo_count(fifo) == 0);
     }
     return true;
 }
 
-uint8_t fifo_peek(const FIFO *fifo) {
+uint8_t fifo_peek(const fifo_t *fifo) {
     uint8_t data = 0;
 
     if (!fifo_empty(fifo)) {
@@ -48,7 +48,7 @@ uint8_t fifo_peek(const FIFO *fifo) {
     return data;
 }
 
-bool fifo_back(FIFO *fifo) {
+bool fifo_back(fifo_t *fifo) {
     if (!fifo_empty(fifo)) {
         fifo->head--;
         return true;
@@ -56,7 +56,7 @@ bool fifo_back(FIFO *fifo) {
     return false;
 }
 
-uint8_t fifo_getc(FIFO *fifo) {
+uint8_t fifo_getc(fifo_t *fifo) {
     uint8_t data = 0;
 
     if (!fifo_empty(fifo)) {
@@ -66,7 +66,7 @@ uint8_t fifo_getc(FIFO *fifo) {
     return data;
 }
 
-bool fifo_putc(FIFO *fifo, uint8_t data) {
+bool fifo_putc(fifo_t *fifo, uint8_t data) {
     bool status = false;
 
     if (fifo) {
@@ -79,7 +79,7 @@ bool fifo_putc(FIFO *fifo, uint8_t data) {
     return status;
 }
 
-uint8_t fifo_puts(FIFO *fifo, uint8_t * string) {
+uint8_t fifo_puts(fifo_t *fifo, uint8_t * string) {
     if (fifo) {
         for (uint8_t i = 0; i < str_len(string); i++) {
             if (!fifo_putc(fifo, string[i]))
@@ -89,7 +89,7 @@ uint8_t fifo_puts(FIFO *fifo, uint8_t * string) {
     return 0;
 }
 
-bool fifo_scanc(FIFO *fifo, uint8_t c) {
+bool fifo_scanc(fifo_t *fifo, uint8_t c) {
     if (fifo) {
         if (!fifo_empty(fifo)) {
             uint8_t tail = fifo->tail;
@@ -108,7 +108,7 @@ bool fifo_scanc(FIFO *fifo, uint8_t c) {
     return false;
 }
 
-uint8_t fifo_get_token(FIFO *fifo, uint8_t * str, uint8_t len, uint8_t term) {
+uint8_t fifo_get_token(fifo_t *fifo, uint8_t * str, uint8_t len, uint8_t term) {
     if (fifo) {
         memset((void *)str, 0, len);
 

@@ -12,19 +12,19 @@ typedef struct fifo {
     volatile uint8_t tail;
     volatile uint8_t *buffer;
     uint8_t buffer_len;
-} FIFO;
+} fifo_t;
 
-void fifo_init(FIFO * b, uint8_t * buffer, uint8_t buffer_len);
-uint8_t fifo_count(const FIFO * b);
-bool fifo_full(const FIFO * b);
-bool fifo_empty(const FIFO * b);
-uint8_t fifo_peek(const FIFO * b);
-uint8_t fifo_getc(FIFO * b);
-bool fifo_putc(FIFO * b, uint8_t data);
-uint8_t fifo_puts(FIFO * b, uint8_t * str);
-bool fifo_scanc(FIFO * b, uint8_t c);
-uint8_t fifo_get_token(FIFO * b, uint8_t * str, uint8_t len, uint8_t);
-bool fifo_back(FIFO * b);
+void fifo_init(fifo_t * b, uint8_t * buffer, uint8_t buffer_len);
+uint8_t fifo_count(const fifo_t * b);
+bool fifo_full(const fifo_t * b);
+bool fifo_empty(const fifo_t * b);
+uint8_t fifo_peek(const fifo_t * b);
+uint8_t fifo_getc(fifo_t * b);
+bool fifo_putc(fifo_t * b, uint8_t data);
+uint8_t fifo_puts(fifo_t * b, uint8_t * str);
+bool fifo_scanc(fifo_t * b, uint8_t c);
+uint8_t fifo_get_token(fifo_t * b, uint8_t * str, uint8_t len, uint8_t);
+bool fifo_back(fifo_t * b);
 
 
 #endif
