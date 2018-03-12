@@ -80,4 +80,5 @@ void lcd_draw_hline(int16_t x, int16_t y, int16_t l, uint16_t color);
 void lcd_draw_rest(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
 uint16_t lcd_rgb2color(uint8_t r, uint8_t g, uint8_t b);
 
+void lcd_orient0(void);
 #endif

@@ -31,8 +31,35 @@
 #define PIN_RESET PB1
 #define PIN_A0    PB0
 
+#define MADCTL_MY       0x80
+#define MADCTL_MX       0x40
+#define MADCTL_MV       0x20
+#define MADCTL_ML       0x10
+#define MADCTL_RGB      0x00
+#define MADCTL_BGR      0x08
+#define MADCTL_MH       0x04
+
+
 #define regbit_set_up(reg, bite)    (reg) |= (1 << (bite))
 #define regbit_set_down(reg, bite)  (reg) &= ~(1 << (bite))
+
+#ifndef ST7735_TFTWIDTH
+#define ST7735_TFTWIDTH  127
+#endif
+#ifdef ST7735_TFTHEIGHT
+#define ST7735_TFTHEIGHT 127
+#endif
+
+typedef struct lcd_screen {
+    uint16_t width;
+    uint16_t height;
+} lcd_screen_t;
+
+lcd_screen_t lcd_screen = { 
+    .width = ST7735_TFTWIDTH,
+    .height = ST7735_TFTHEIGHT
+};
+
 
 void spi_enable(void) {
     regbit_set_up(SPCR, SPE);
@@ -315,7 +342,9 @@ void lcd_addr_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
 }
 
 void lcd_draw_pixel(uint8_t x, uint8_t y, uint16_t color) {
-    lcd_addr_window(x, y, x + 1, y + 1);
+    if (x > lcd_screen.height || y > lcd_screen.width)
+        return;
+    lcd_addr_window(x, y, x, y);
     lcd_write_word(color);
 }
 
@@ -380,4 +409,11 @@ void lcd_draw_rest(uint16_t x1, uint16_t y1, uint16_t w, uint16_t h, uint16_t co
 uint16_t lcd_rgb2color(uint8_t r, uint8_t g, uint8_t b) {
     return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
+
+void lcd_orient0(void) {
+    lcd_write_command(ST7735_MADCTL);
+    lcd_write_byte(MADCTL_RGB);
+}
+
+
 /* EOF */

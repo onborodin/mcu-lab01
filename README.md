@@ -22,7 +22,7 @@ that for the MCU have very good training shields and a lot peripherals modules.
 - AVR I2C driver
 - FIFO ring buffer
 - AVR UART driver
-- ... 
+- ...
 
 
 ## UART screen example
