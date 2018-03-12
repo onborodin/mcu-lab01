@@ -9,7 +9,7 @@ I'm training myself in writing "hardware" code.
 
 Programming in C for AVR MCU in its relative simplicity reminds me of some
 BASIC of 90' =) but at the same time it programming contains a some basic elements of
-more complex DCS/SCADA systems.
+more complex DCS/SCADA systems (thx a lot for China colleagues =)).
 
 I think that Atmel AVR8 controllers are very good for learning, given
 that for the MCU have very good training shields and a lot peripherals modules.
