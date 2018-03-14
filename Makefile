@@ -19,7 +19,7 @@ CFLAGS+= -ffunction-sections -fdata-sections
 LDFLAGS+= -s -DF_CPU=16000000UL -mmcu=atmega328p -lm
 #LDFLAGS+= -Wl,-u,vfprintf -lprintf_flt
 
-main.elf: main.o fifo.o tools.o shell.o twim.o ds3231.o st7735.o at24c.o
+main.elf: main.o fifo.o tools.o shell.o twim.o ds3231.o st7735.o at24c.o console.o
 	avr-gcc $(LDFLAGS) -o $@ $(^F)
 	avr-size --format=berkeley $@
 

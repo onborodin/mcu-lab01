@@ -1,0 +1,31 @@
+
+#ifndef CONSOLE_H_ITU
+#define CONSOLE_H_ITU
+
+
+typedef struct console {
+    uint8_t width;
+    uint8_t height;
+    uint8_t line;
+    uint8_t row;
+    uint16_t xmax;
+    uint16_t ymax;
+    uint16_t xshift;
+    uint16_t yshift;
+    font_t *font;
+    uint8_t *buffer;
+    uint16_t buffer_len;
+} console_t;
+
+#define CONSOLE_WIDTH   (128/8)
+#define CONSOLE_HEIGHT  (128/14)
+
+extern console_t console;
+
+void console_render_char(console_t *console, uint8_t line, uint8_t row);
+void console_render(console_t *console);
+void console_shift(console_t *console);
+void console_putc(console_t *console, uint8_t c);
+int console_puts(console_t *console, uint8_t *str);
+
+#endif

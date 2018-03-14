@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <avr/io.h>
 #include <util/delay.h>
+#include <avr/pgmspace.h>
 
 #include <st7735.h>
 
@@ -415,5 +416,21 @@ void lcd_orient0(void) {
     lcd_write_byte(MADCTL_RGB);
 }
 
+void lcd_draw_char(uint16_t xbase, uint16_t ybase, font_t *font, uint8_t c) {
+    if (c < font->start || c > (font->start + font->length))
+        c = ' ';
+    ybase += font->width;
+    xbase += font->height;
+    c = c - font->start;
+    for (uint8_t h = 0; h < font->height; h++) {
+        for (uint8_t w = 0; w < font->width; w++) {
+
+            if (pgm_read_byte(&(font->bitmap[(c) * font->height + h])) & (1 << w))
+                lcd_draw_pixel((xbase - h), (ybase - w), 0xffff);
+            else
+                lcd_draw_pixel((xbase - h), (ybase - w), 0x0000);
+        }
+    }
+}
 
 /* EOF */
