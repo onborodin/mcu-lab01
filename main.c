@@ -134,37 +134,101 @@ void timer0_init(void) {
     //TCCR0B |= (1 << CS02) | (1 << CS00); /* CLK/1024 */
     TCCR0B |= (1 << CS02);                 /* CLK/256 */
     TIMSK0 |= (1 << TOIE0);
+    TCCR0A &= ~(1 << COM0A0);
+    TCCR0A &= ~(1 << COM0A1);
+}
+
+
+void button_init(void) {
+    /* Set PIN as input */
+    regbit_set_down(DDRD, PD3);
 }
 
 #define BUTTON_RELEASED  0
 #define BUTTON_PRESSED   1
 
-volatile uint8_t button_writed_state = BUTTON_RELEASED;
-volatile uint16_t button_time = 0;
+
+#define BUTTON_INFINITE_TIME 6400
+
+typedef struct button {
+    uint8_t writed_state;
+    uint32_t release_time;
+    uint32_t press_time;
+    uint8_t prev_press;
+} button_t;
+
+static button_t button = { 
+    .press_time = 0,
+    .writed_state = BUTTON_RELEASED,
+    .release_time = BUTTON_INFINITE_TIME
+};
+
+void button_handler(button_t *button, uint8_t just_state) {
+
+    if (just_state == BUTTON_PRESSED) {
+        /* If button pressed */
+        if (button->writed_state == BUTTON_RELEASED) {
+            button->writed_state = BUTTON_PRESSED;
+            button->release_time = 11;
+
+        } else if (button->writed_state == BUTTON_PRESSED) {
+            if (button->press_time < BUTTON_INFINITE_TIME) {
+                button->press_time++;
+            }
+            button->writed_state = BUTTON_PRESSED;
+        }
+    } else if (just_state == BUTTON_RELEASED) {
+
+        if (button->writed_state == BUTTON_RELEASED) {
+            /* Measure release time */
+            if (button->release_time < BUTTON_INFINITE_TIME) {
+                button->release_time++;
+            }
+            button->writed_state = BUTTON_RELEASED;
+
+        } else
+
+        if (button->writed_state == BUTTON_PRESSED) {
+
+            button->writed_state = BUTTON_RELEASED;
+            if (button->press_time > 10 && button->press_time < 100 ) {
+                printf("short press\r\n");
+            } else if (button->press_time > 100 && button->press_time < 1000 ) {
+                printf("long press\r\n");
+            }
+            if (button->press_time > 10)
+                printf(" -- pressed time=%6d, release time = %6d\r\n", button->press_time, button->release_time);
+
+            button->press_time = 0;
+        }
+    }
+}
+
 
 /* Timer 0 */
 ISR(TIMER0_OVF_vect) {
 
-#define button_just_released (!(PIND & (1 << PD4)))
-#define button_just_pressed  (PIND & (1 << PD4))
+#define button_just_released (!(PIND & (1 << PD3)))
+#define button_just_pressed  (PIND & (1 << PD3))
 
     if (button_just_pressed) {
-        if (button_writed_state == BUTTON_RELEASED) {
-            button_writed_state = BUTTON_PRESSED;
-            button_time++;
-            printf("button pressed\r\n");
-        } else if (button_writed_state == BUTTON_PRESSED) {
-            button_time++;
-        }
+            button_handler(&button, BUTTON_PRESSED);
+    } else if (button_just_released) {
+            button_handler(&button, BUTTON_RELEASED);
     }
 
-    if (button_just_released) {
-        if (button_writed_state == BUTTON_RELEASED) {
-            /* nothing */
-        } else if (button_writed_state == BUTTON_PRESSED) {
-            button_writed_state = BUTTON_RELEASED;
-            printf("button pressed time=%6d\r\n", button_time);
-            button_time = 0;
+}
+
+void ms(void) {
+
+    uint16_t xmin = 0;
+    uint16_t xmax = 127;
+    uint16_t ymin = 0;
+    uint16_t ymax = 127;
+
+    for (uint16_t Px = xmin; Px < xmax; Px++) {
+        for (uint16_t Py = ymin; Py < ymax; Py++) {
+            lcd_draw_pixel(Px, Py, Px*Py);
         }
     }
 }
@@ -175,30 +239,33 @@ ISR(TIMER0_OVF_vect) {
 int main() {
     io_hook();
     uart_init();
-    spi_init();
-    lcd_init();
+    //spi_init();
+    //lcd_init();
     i2c_init();
     wdt_init();
-    //timer0_init();
+    timer0_init();
 
-    /* Set PIN as input */
-    //regbit_set_down(DDRD, PD4);
+    button_init();
 
     sei();
 
     _delay_ms(100);
-    lcd_write_rect(0, 0, 127, 127, 0x0000);
+    //lcd_write_rect(0, 0, 127, 127, 0x0000);
 
     uint8_t str[MAX_CMD_LEN];
     uint8_t prompt[] = "READY>";
-    console_puts(&console, prompt);
+    //console_puts(&console, prompt);
     printf(prompt);
 
-    uint8_t cs[] = "0123456789ABCDEF With some (indeed, many) C compilers, you can get away with what's called a 'common' definition of a variable too. 'Common', here, refers to a technique used in Fortran for sharing variables between source files, using a (possibly named) COMMON block.";
+    uint8_t cs[] = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.";
+    //console_puts(&console, cs);
 
+    #if 0
     for (uint8_t i = 0; i < 15; i++) {
         console_puts(&console, cs);
     }
+    #endif
+    //ms();
 
     while (1) {
 
