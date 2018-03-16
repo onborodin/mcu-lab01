@@ -21,6 +21,7 @@
 #define BAUD 19200
 #include <util/setbaud.h>
 
+#include <uart.h>
 #include <fifo.h>
 #include <tools.h>
 #include <shell.h>
@@ -36,75 +37,6 @@
 #define regbit_is_set(reg, bit)    ((reg) & (1 << (bit)))
 #define reg_set_value(reg, value)     ((reg) = (value))
 
-static uint8_t inbuf[FIFO_BUFFER_SIZE];
-static uint8_t outbuf[FIFO_BUFFER_SIZE];
-
-fifo_t fifo_in, fifo_out;
-
-int uart_putchar(char c, FILE * stream) {
-    return fifo_putc(&fifo_out, c);
-}
-
-int uart_getchar(FILE * stream) {
-    return (int)fifo_getc(&fifo_out);
-}
-
-FILE uart_str = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
-
-void io_hook(void) {
-
-    fifo_init(&fifo_in, inbuf, sizeof(inbuf));
-    fifo_init(&fifo_out, outbuf, sizeof(outbuf));
-
-    stdout = &uart_str;
-    stdin = &uart_str;
-    stderr = &uart_str;
-}
-
-/* UART */
-void uart_init(void) {
-    /* UBRR - USART Baud Rate Register */
-    UBRR0H = UBRRH_VALUE;
-    UBRR0L = UBRRL_VALUE;
-
-    /* UCSR  - USART Control and Status Register */
-    /* U2X - Double Speed Operation */
-    regbit_set_down(UCSR0A, U2X0);
-
-    /* UCSZ - USART Character Size, 8 bit */
-    regbit_set_down(UCSR0B, UCSZ02);
-    regbit_set_up(UCSR0C, UCSZ01);
-    regbit_set_up(UCSR0C, UCSZ00);
-
-    /* USBS - USART Stop Bit Select */
-    /* UPM - USART Parity Mode */
-    /* One stop bit, no parity */
-    regbit_set_down(UCSR0C, USBS0);
-    regbit_set_down(UCSR0C, UPM00);
-    regbit_set_down(UCSR0C, UPM01);
-
-    /* Enable TX and RX */
-    regbit_set_up(UCSR0B, TXEN0);
-    regbit_set_up(UCSR0B, RXEN0);
-
-    /* Enable Receive Interrupt */
-    regbit_set_up(UCSR0B, RXCIE0);
-
-    /* Disable Transmit Interrupt */
-    regbit_set_down(UCSR0B, UDRIE0);
-}
-
-ISR(USART_RX_vect) {
-    volatile uint8_t ichar = UDR0;
-
-    if (ichar == '\r') {
-        fifo_putc(&fifo_in, '\n');
-        fifo_putc(&fifo_out, '\n');
-    }
-
-    fifo_putc(&fifo_in, ichar);
-    fifo_putc(&fifo_out, ichar);
-}
 
 /* Watchdog timer */
 void wdt_init(void) {
@@ -128,17 +60,16 @@ act_t shell_act[] = {
 
 /* Timer0 */
 void timer0_init(void) {
-#if 0
+
     TCCR0B |= (1 << CS02) | (1 << CS00); /* CLK/1024 */
     TCCR0B |= (1 << CS01);                 /* CLK/256 */
-    //TIMSK0 |= (1 << TOIE0);
+    TIMSK0 |= (1 << TOIE0);
 
     TCCR0A &= ~(1 << COM0A0);
     TCCR0A &= ~(1 << COM0A1);
 
     TCCR0A &= ~(1 << COM0B1); 
     TCCR0A &= ~(1 << COM0B0);
-#endif
 }
 
 void button_init(void) {
@@ -213,7 +144,7 @@ void button_handler(button_t *button, uint8_t just_state) {
                 //printf("long press\r\n");
             }
             if (button->press_time > 0)
-                printf(" -- pressed time=%6d, release time = %6d\r\n", button->press_time, button->release_time);
+                //printf(" -- pressed time=%6d, release time = %6d\r\n", button->press_time, button->release_time);
 
             button->press_time = 0;
         }
@@ -221,7 +152,7 @@ void button_handler(button_t *button, uint8_t just_state) {
 }
 
 
-#if 0
+
 /* Timer 0 */
 ISR(TIMER0_OVF_vect) {
 
@@ -236,7 +167,6 @@ ISR(TIMER0_OVF_vect) {
             button_handler(&button, BUTTON_RELEASED);
     }
 }
-#endif
 
 
 #define MAX_CMD_LEN 164
@@ -251,7 +181,7 @@ int main() {
 
     _delay_ms(100);
 
-    //timer0_init();
+    timer0_init();
     //button_init();
 
     sei();
@@ -288,7 +218,7 @@ int main() {
                 printf("COMMAND NOT FOUND\r\n");
             printf(prompt);
         }
-        _delay_ms(50);
+        _delay_ms(300);
     }
 }
 /* EOF */
