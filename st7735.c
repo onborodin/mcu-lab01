@@ -61,7 +61,6 @@ lcd_screen_t lcd_screen = {
     .height = ST7735_TFTHEIGHT
 };
 
-
 void spi_enable(void) {
     regbit_set_up(SPCR, SPE);
 }
@@ -324,6 +323,7 @@ void lcd_init(void) {
     /*  4: Main screen turn on, no args w/delay */
     lcd_write_command(ST7735_DISPON);
     _delay_ms(100);
+
 }
 
 #define LCD_DELTA_X     2
@@ -431,6 +431,10 @@ void lcd_draw_char(uint16_t xbase, uint16_t ybase, font_t *font, uint8_t c) {
                 lcd_draw_pixel((xbase - h), (ybase - w), 0x0000);
         }
     }
+}
+
+void lcd_clear(void) {
+    lcd_write_rect(0, 0, ST7735_TFTWIDTH, ST7735_TFTHEIGHT, 0x0000);
 }
 
 /* EOF */

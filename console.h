@@ -28,4 +28,9 @@ void console_shift(console_t *console);
 void console_putc(console_t *console, uint8_t c);
 int console_puts(console_t *console, uint8_t *str);
 
+void console_render_xychar(console_t *console, uint8_t line, uint8_t row, uint8_t c);
+void console_xyputc(console_t *console, uint16_t line, uint16_t row, uint8_t c);
+int console_xyputs(console_t *console, uint16_t line, uint16_t row, uint8_t *str);
+
+
 #endif

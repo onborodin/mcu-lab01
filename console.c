@@ -42,6 +42,10 @@ void console_render_char(console_t *console, uint8_t line, uint8_t row) {
         console->font, c);
 }
 
+
+
+
+
 void console_render(console_t *console) {
 #if 0
     for (uint8_t line = console->height; line > 0; --line) {
@@ -98,6 +102,29 @@ int console_puts(console_t *console, uint8_t *str) {
     while (str[i] != 0) {
         console_putc(console, str[i]);
         i++;
+    }
+    return i;
+}
+
+void console_render_xychar(console_t *console, uint8_t line, uint8_t row, uint8_t c) {
+    lcd_draw_char(
+        (console->xmax - (console->font->height * (line + 1))) + console->yshift,
+        (console->font->width * row) + console->xshift,
+        console->font, c);
+}
+
+void console_xyputc(console_t *console, uint16_t line, uint16_t row, uint8_t c) {
+    if (row < console->width && line < console->height) {
+        console_render_xychar(console, line, row, c);
+    }
+}
+
+int console_xyputs(console_t *console, uint16_t line, uint16_t row, uint8_t *str) {
+    uint8_t i = 0;
+    while (str[i] != 0 && row < console->width && line < console->height) {
+        console_render_xychar(console, line, row, str[i]);
+        i++;
+        row++;
     }
     return i;
 }

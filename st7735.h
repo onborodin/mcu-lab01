@@ -88,6 +88,6 @@ void lcd_draw_rest(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t 
 uint16_t lcd_rgb2color(uint8_t r, uint8_t g, uint8_t b);
 
 void lcd_draw_char(uint16_t xbase, uint16_t ybase, font_t *font, uint8_t c);
-
+void lcd_clear(void);
 void lcd_orient0(void);
 #endif
