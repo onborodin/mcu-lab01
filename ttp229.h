@@ -7,7 +7,5 @@
 
 uint16_t ttp229_read(void);
 
-
-
 #endif
 /* EOF */

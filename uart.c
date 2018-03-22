@@ -18,7 +18,7 @@
 #include <util/twi.h>
 #include <avr/eeprom.h>
 
-#define BAUD 19200
+#define BAUD 9600
 #include <util/setbaud.h>
 
 #include <fifo.h>
@@ -43,7 +43,7 @@ int uart_putchar(char c, FILE * stream) {
 }
 
 int uart_getchar(FILE * stream) {
-    return (int)fifo_getc(&fifo_out);
+    return (int)fifo_getc(&fifo_in);
 }
 
 FILE uart_str = FDEV_SETUP_STREAM(uart_putchar, uart_getchar, _FDEV_SETUP_RW);
@@ -64,19 +64,22 @@ void uart_init(void) {
     UBRR0H = UBRRH_VALUE;
     UBRR0L = UBRRL_VALUE;
 
-    /* UCSR  - USART Control and Status Register */
     /* U2X - Double Speed Operation */
     regbit_set_down(UCSR0A, U2X0);
+    regbit_set_down(UCSR0A, MPCM0);
 
     /* UCSZ - USART Character Size, 8 bit */
     regbit_set_down(UCSR0B, UCSZ02);
     regbit_set_up(UCSR0C, UCSZ01);
     regbit_set_up(UCSR0C, UCSZ00);
 
-    /* USBS - USART Stop Bit Select */
-    /* UPM - USART Parity Mode */
-    /* One stop bit, no parity */
+    /* Set async mode */
+    regbit_set_down(UCSR0C, UMSEL01);
+    regbit_set_down(UCSR0C, UMSEL00);
+
+    /* One stop bit */
     regbit_set_down(UCSR0C, USBS0);
+    /* No parity */
     regbit_set_down(UCSR0C, UPM00);
     regbit_set_down(UCSR0C, UPM01);
 
@@ -88,19 +91,8 @@ void uart_init(void) {
     regbit_set_up(UCSR0B, RXCIE0);
 
     /* Disable Transmit Interrupt */
-    regbit_set_down(UCSR0B, UDRIE0);
+    regbit_set_down(UCSR0B, TXCIE0);
 }
 
-ISR(USART_RX_vect) {
-    volatile uint8_t ichar = UDR0;
-
-    if (ichar == '\r') {
-        fifo_putc(&fifo_in, '\n');
-        fifo_putc(&fifo_out, '\n');
-    }
-
-    fifo_putc(&fifo_in, ichar);
-    fifo_putc(&fifo_out, ichar);
-}
 
 /* EOF */

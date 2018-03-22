@@ -5,6 +5,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/pgmspace.h>
+#include <avr/interrupt.h>
 
 #include <st7735.h>
 
@@ -44,12 +45,12 @@
 #define regbit_set_up(reg, bite)    (reg) |= (1 << (bite))
 #define regbit_set_down(reg, bite)  (reg) &= ~(1 << (bite))
 
-#ifndef ST7735_TFTWIDTH
-#define ST7735_TFTWIDTH  127
-#endif
-#ifdef ST7735_TFTHEIGHT
-#define ST7735_TFTHEIGHT 127
-#endif
+//#ifndef ST7735_TFTWIDTH
+//#define ST7735_TFTWIDTH  127
+//#endif
+//#ifdef ST7735_TFTHEIGHT
+//#define ST7735_TFTHEIGHT 127
+//#endif
 
 typedef struct lcd_screen {
     uint16_t width;
@@ -116,7 +117,6 @@ void spi_write_word_array(uint16_t w, uint16_t n) {
         spi_write_word(w);
 }
 
-
 void lcd_write_command(uint8_t c) {
     regbit_set_down(PORTB, PIN_A0);
     regbit_set_down(PORTB, PIN_SS);
@@ -143,7 +143,6 @@ void lcd_write_word(uint16_t w) {
 
     regbit_set_up(PORTB, PIN_A0);
 }
-
 
 void lcd_write_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint16_t color) {
 
@@ -268,7 +267,8 @@ void lcd_init(void) {
     lcd_write_byte(0x00);
     /* XEND = 127 */
     lcd_write_byte(0x00);
-    lcd_write_byte(0x7F);
+    lcd_write_byte(ST7735_TFTWIDTH /* 0x7F */);
+
     /* 2: Row addr set, 4 args, no delay: */
     lcd_write_command(ST7735_RASET);
     /* XSTART = 0 */
@@ -276,7 +276,7 @@ void lcd_init(void) {
     lcd_write_byte(0x00);
     /* XEND = 127 */
     lcd_write_byte(0x00);
-    lcd_write_byte(0x7F);
+    lcd_write_byte(ST7735_TFTHEIGHT /* 0x7F */);
 
     /* 1: Magical unicorn dust, 16 args, no delay: */
     lcd_write_command(ST7735_GMCTRP1);
@@ -325,9 +325,8 @@ void lcd_init(void) {
     _delay_ms(100);
 
 }
-
-#define LCD_DELTA_X     2
-#define LCD_DELTA_Y     3
+#define LCD_DELTA_X     0//2
+#define LCD_DELTA_Y     0//3
 
 void lcd_addr_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
 
@@ -343,8 +342,8 @@ void lcd_addr_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
 }
 
 void lcd_draw_pixel(uint8_t x, uint8_t y, uint16_t color) {
-    if (x > lcd_screen.height || y > lcd_screen.width)
-        return;
+    //if (x > lcd_screen.height || y > lcd_screen.width)
+    //    return;
     lcd_addr_window(x, y, x, y);
     lcd_write_word(color);
 }
@@ -419,9 +418,10 @@ void lcd_orient0(void) {
 void lcd_draw_char(uint16_t xbase, uint16_t ybase, font_t *font, uint8_t c) {
     if (c < font->start || c > (font->start + font->length))
         c = ' ';
-    ybase += font->width;
-    xbase += font->height;
     c = c - font->start;
+#if 0
+    //ybase += font->width;
+    //xbase += font->height;
     for (uint8_t h = 0; h < font->height; h++) {
         for (uint8_t w = 0; w < font->width; w++) {
 
@@ -431,6 +431,17 @@ void lcd_draw_char(uint16_t xbase, uint16_t ybase, font_t *font, uint8_t c) {
                 lcd_draw_pixel((xbase - h), (ybase - w), 0x0000);
         }
     }
+#else
+    lcd_addr_window(xbase, ybase, xbase + font->height - 1, ybase + font->width - 1);
+    for (uint8_t w = font->width; w > 0; w--) {
+        for (uint8_t h = font->height; h > 0; h--) {
+            if (pgm_read_byte(&(font->bitmap[(c) * font->height + (h - 1)])) & (1 << (w - 1)))
+                lcd_write_word(0xffff);
+            else
+                lcd_write_word(0x0000);
+        }
+    }
+#endif
 }
 
 void lcd_clear(void) {

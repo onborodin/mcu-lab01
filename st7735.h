@@ -56,8 +56,18 @@
 #define ST7735_GMCTRN1  0xE1    /* Gamma `-'polarity Correction Characteristics Setting */
 
 
-#define ST7735_TFTWIDTH  127
-#define ST7735_TFTHEIGHT 127
+#define ST7735_TFTWIDTH  127 //127
+#define ST7735_TFTHEIGHT 159 //127
+
+#define ST7735_BLACK     0x0000
+#define ST7735_BLUE      0x001F
+#define ST7735_RED       0xF800
+#define ST7735_GREEN     0x07E0
+#define ST7735_CYAN      0x07FF
+#define ST7735_MAGENTA   0xF81F
+#define ST7735_YELLOW    0xFFE0
+#define ST7735_WHITE     0xFFFF
+
 
 typedef struct font {
     uint8_t width;

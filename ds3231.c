@@ -193,4 +193,12 @@ void ds_init(void) {
     r &= ~(1 << 6);
     ds_write(DS_REGHOUR, r);
 }
+
+uint32_t ds_get_utime(void) {
+    return  ds_get_year() + ds_get_month() * 3600 * 24 +
+            ds_get_mday() * 3600 * 24 +
+            ds_get_hour() * 3600 + 
+            ds_get_min() * 60 + ds_get_sec();
+}
+
 /* EOF */

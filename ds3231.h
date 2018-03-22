@@ -41,6 +41,7 @@ void ds_set_mday(uint8_t num);
 void ds_set_month(uint8_t num);
 void ds_set_year(uint16_t num);
 void ds_init(void);
+uint32_t ds_get_utime(void);
 
 #endif
 

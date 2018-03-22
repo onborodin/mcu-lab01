@@ -18,7 +18,7 @@
 #include <util/twi.h>
 #include <avr/eeprom.h>
 
-#define BAUD 19200
+#define BAUD 9600
 #include <util/setbaud.h>
 
 #include <uart.h>
@@ -37,188 +37,153 @@
 #define regbit_is_set(reg, bit)    ((reg) & (1 << (bit)))
 #define reg_set_value(reg, value)     ((reg) = (value))
 
+#define MAX_CMD_LEN 164
 
-/* Watchdog timer */
-void wdt_init(void) {
-    wdt_enable(WDTO_60MS);
-    WDTCSR = (1 << WDIE);
-}
-
-ISR(WDT_vect) {
-    wdt_reset();
-    volatile uint8_t c;
-    while ((c = fifo_getc(&fifo_out)) > 0) {
-        while(!regbit_is_set(UCSR0A, UDRE0));
-        UDR0 = c;
-    }
-    WDTCSR = (1 << WDIE);
-}
-
-/* Shell */
-act_t shell_act[] = {
-};
+volatile uint16_t timer0 = 0;
+volatile uint8_t ir_char = 0;
+uint8_t in_str[MAX_CMD_LEN];
 
 /* Timer0 */
 void timer0_init(void) {
-
     TCCR0B |= (1 << CS02) | (1 << CS00); /* CLK/1024 */
-    TCCR0B |= (1 << CS01);                 /* CLK/256 */
-    TIMSK0 |= (1 << TOIE0);
+    //TCCR0B |= (1 << CS01);               /* CLK/256 */
 
-    TCCR0A &= ~(1 << COM0A0);
-    TCCR0A &= ~(1 << COM0A1);
+    regbit_set_up(TIMSK0, TOIE0);
 
-    TCCR0A &= ~(1 << COM0B1); 
-    TCCR0A &= ~(1 << COM0B0);
+    regbit_set_down(TCCR0A, COM0A0);
+    regbit_set_down(TCCR0A, COM0A1);
+
+    regbit_set_down(TCCR0A, COM0B1); 
+    regbit_set_down(TCCR0A, COM0B0);
 }
 
-void button_init(void) {
-    /* Set PIN as input */
-    regbit_set_down(DDRD, PD3);
+
+ISR(TIMER0_OVF_vect) {
 }
 
-#define BUTTON_RELEASED  0
-#define BUTTON_PRESSED   1
+#include <ir.h>
 
-#define BUTTON_INFINITE_TIME 6400
-
-typedef struct button {
-    uint8_t writed_state;
-    uint32_t release_time;
-    uint32_t press_time;
-    uint8_t prev_press;
-} button_t;
-
-static button_t button = { 
-    .press_time = 0,
-    .writed_state = BUTTON_RELEASED,
-    .release_time = BUTTON_INFINITE_TIME
+ir_t ir = {
+    .id = 0x00FF
 };
 
-void ms(void) {
 
-    uint16_t xmin = 0;
-    uint16_t xmax = 127;
-    uint16_t ymin = 0;
-    uint16_t ymax = 127;
+uint8_t * ir_get_str(ir_t *ir) {
+    switch(ir_get_cmd(ir)) {
+        case IR_BN_OK:
+            return (uint8_t *)("OK");
+            break;
+        case IR_BN_LEFT:
+            return (uint8_t *)("LEFT");
+            break;
+        case IR_BN_RIGHT:
+            return (uint8_t *)("RIGHT");
+            break;
+        case IR_BN_UP:
+            return (uint8_t *)("UP");
+            break;
+        case IR_BN_DOWN:
+            return (uint8_t *)("DOWN");
+            break;
+        case IR_BN_1:
+            return (uint8_t *)("1");
+            break;
+        case IR_BN_2:
+            return (uint8_t *)("2");
+            break;
+        case IR_BN_3:
+            return (uint8_t *)("3");
+            break;
+        case IR_BN_4:
+            return (uint8_t *)("4");
+            break;
+        case IR_BN_5:
+            return (uint8_t *)("5");
+            break;
+        case IR_BN_6:
+            return (uint8_t *)("6");
+            break;
+        case IR_BN_7:
+            return (uint8_t *)("7");
+            break;
+        case IR_BN_8:
+            return (uint8_t *)("8");
+            break;
+        case IR_BN_9:
+            return (uint8_t *)("9");
+            break;
+        case IR_BN_0:
+            return (uint8_t *)("0");
+            break;
+        case IR_BN_AST:
+            return (uint8_t *)("*");
+            break;
+        case IR_BN_NUM:
+            return (uint8_t *)("#");
+            break;
+        default:
+            return (uint8_t *)("NO");
 
-    for (uint16_t Px = xmin; Px < xmax; Px++) {
-        for (uint16_t Py = ymin; Py < ymax; Py++) {
-            lcd_draw_pixel(Px, Py, Px*Py);
-        }
-    }
-}
-
-void button_handler(button_t *button, uint8_t just_state) {
-
-    if (just_state == BUTTON_PRESSED) {
-        /* If button pressed */
-        if (button->writed_state == BUTTON_RELEASED) {
-            button->writed_state = BUTTON_PRESSED;
-            button->release_time = 11;
-
-        } else if (button->writed_state == BUTTON_PRESSED) {
-            if (button->press_time < BUTTON_INFINITE_TIME) {
-                button->press_time++;
-            }
-            button->writed_state = BUTTON_PRESSED;
-        }
-    } else if (just_state == BUTTON_RELEASED) {
-
-        if (button->writed_state == BUTTON_RELEASED) {
-            /* Measure release time */
-            if (button->release_time < BUTTON_INFINITE_TIME) {
-                button->release_time++;
-            }
-            button->writed_state = BUTTON_RELEASED;
-
-        } else
-
-        if (button->writed_state == BUTTON_PRESSED) {
-
-            button->writed_state = BUTTON_RELEASED;
-            if (button->press_time > 10 && button->press_time < 100 ) {
-                //printf("short press\r\n");
-                ms();
-            } else if (button->press_time > 100 && button->press_time < 1000 ) {
-                //printf("long press\r\n");
-            }
-            if (button->press_time > 0)
-                //printf(" -- pressed time=%6d, release time = %6d\r\n", button->press_time, button->release_time);
-
-            button->press_time = 0;
-        }
-    }
-}
-
-
-
-/* Timer 0 */
-ISR(TIMER0_OVF_vect) {
-
-#define button_just_released (!(PIND & (1 << PD3)))
-#define button_just_pressed  (PIND & (1 << PD3))
-
-    printf("timer int\r\n");
-
-    if (button_just_pressed) {
-            button_handler(&button, BUTTON_PRESSED);
-    } else if (button_just_released) {
-            button_handler(&button, BUTTON_RELEASED);
     }
 }
 
 
-#define MAX_CMD_LEN 164
+
+ISR(USART_RX_vect) {
+    volatile uint8_t ichar = UDR0;
+    fifo_putc(&fifo_in, ichar);
+    ir_push_char(&ir, ichar);
+}
 
 int main() {
     io_hook();
     uart_init();
     spi_init();
     lcd_init();
+    console_init();
     i2c_init();
-    wdt_init();
-
-    _delay_ms(100);
-
+    //wdt_init();
     timer0_init();
-    //button_init();
-
-    sei();
 
     _delay_ms(100);
     lcd_clear();
+    _delay_ms(100);
+    sei();
 
-    uint8_t str[MAX_CMD_LEN];
-    uint8_t prompt[] = "READY>";
-    console_puts(&console, prompt);
-    printf(prompt);
-
-    //ds_set_month(03);
-    //ds_set_year(2018);
-    //ds_set_mday(16);
-
-    //ds_set_hour(14);
-    //ds_set_min(19);
-    //ds_set_sec(50);
 
     uint8_t date[12];
     uint8_t time[12];
+    uint8_t new_date[12];
+    uint8_t new_time[12];
+
+    sprintf(date, "%04d-%02d-%02d", ds_get_year(), ds_get_month(), ds_get_mday());
+    sprintf(time, "%02d:%02d:%02d", ds_get_hour(), ds_get_min(), ds_get_sec());
+    console_xyputs(&console, 3, 4, date);
+    console_xyputs(&console, 5, 5, time);
+
+    uint8_t prompt[] = "READY>";
+    console_puts(&console, prompt);
 
     while (1) {
 
         sprintf(date, "%04d-%02d-%02d", ds_get_year(), ds_get_month(), ds_get_mday());
-        sprintf(time, "%02d:%02d:%02d",  ds_get_hour(), ds_get_min(), ds_get_sec());
-        console_xyputs(&console, 3, 3, date);
-        console_xyputs(&console, 5, 4, time);
+        sprintf(time, "%02d:%02d:%02d", ds_get_hour(), ds_get_min(), ds_get_sec());
 
-        while (fifo_get_token(&fifo_in, str, MAX_CMD_LEN, '\r') > 0) {
-            int8_t ret_code = shell(str, shell_act, sizeof(shell_act) / sizeof(shell_act[0]));
-            if (ret_code == SH_CMD_NOTFND)
-                printf("COMMAND NOT FOUND\r\n");
-            printf(prompt);
+        if (strcmp(date, new_date)) {
+            strcpy(new_date, date);
+            console_xyputs(&console, 3, 4, date);
         }
-        _delay_ms(300);
+        if (strcmp(time, new_time)) {
+            strcpy(new_time, time);
+            console_xyputs(&console, 5, 5, time);
+
+        }
+
+
+        uint8_t ir_str[16];
+        sprintf(ir_str, "IR 0x%02X %-06s", ir_get_cmd(&ir), ir_get_str(&ir));
+        console_xyputs(&console, 7, 0, ir_str);
+        _delay_ms(200);
     }
 }
 /* EOF */

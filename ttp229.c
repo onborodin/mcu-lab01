@@ -6,7 +6,6 @@
 #include <twim.h>
 #include <ttp229.h>
 
-
 #define TTP229_ADDR  0x57
 
 uint16_t ttp229_read(void) {

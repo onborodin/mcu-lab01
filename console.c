@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <avr/pgmspace.h>
 
 #include <st7735.h>
@@ -18,7 +19,7 @@ font_t basefont = {
     .bitmap = basefont_bitmap
 };
 
-uint8_t console_buffer[CONSOLE_WIDTH * CONSOLE_HEIGHT];
+//uint8_t console_buffer[CONSOLE_WIDTH * CONSOLE_HEIGHT];
 
 console_t console = {
     .width = CONSOLE_WIDTH,
@@ -27,24 +28,33 @@ console_t console = {
     .row = 0,
     .xmax = 127,
     .ymax = 127,
-    .xshift = -1,
-    .yshift = 0,
+    .xshift = 1,
+    .yshift = 1,
     .font = &basefont,
-    .buffer = console_buffer,
+//    .buffer = console_buffer,
     .buffer_len = CONSOLE_WIDTH * CONSOLE_HEIGHT + 1
 };
 
-void console_render_char(console_t *console, uint8_t line, uint8_t row) {
-    uint8_t c = console->buffer[(console->width * line) + row];
-    lcd_draw_char(
-        (console->xmax - (console->font->height * (line + 1))) + console->yshift,
-        (console->font->width * row) + console->xshift,
-        console->font, c);
+void _console_init(console_t *console, uint16_t xmax, uint16_t ymax, font_t *font) {
+    console->xmax = xmax;
+    console->ymax = ymax;
+    console->font = font;
+    console->width = ymax/font->width;
+    console->height = ymax/font->height;
+    console->buffer_len = console->width * console->height + 1;
+    console->buffer = malloc(console->buffer_len);
 }
 
+void console_init(void) {
+    _console_init(&console, ST7735_TFTWIDTH, ST7735_TFTHEIGHT, &basefont);
+}
 
-
-
+void console_render_char(console_t *console, uint8_t line, uint8_t row) {
+    uint8_t c = console->buffer[(console->width * line) + row];
+    lcd_draw_char((console->xmax - (console->font->height * (line + 1))) + console->yshift,
+                   (console->font->width * row) + console->xshift,
+                    console->font, c);
+}
 
 void console_render(console_t *console) {
 #if 0
@@ -53,12 +63,13 @@ void console_render(console_t *console) {
             console_render_char(console, line - 1, row - 1);
         }
     }
-#endif
+#else
     for (uint8_t line = 0; line < console->height; line++) {
         for (uint8_t row = 0; row < console->width; row++) {
             console_render_char(console, line, row);
         }
     }
+#endif
 }
 
 void console_shift(console_t *console) {
